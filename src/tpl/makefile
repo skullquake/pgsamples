@@ -1,74 +1,59 @@
-CC=g++
-SRC=./src/a.cpp
-BIN=./bin/a.out
-CXXFLAGS=\
-     `pkg-config --cflags libpqxx`\
-     `pkg-config --cflags libpq`
-LIBS=\
-     `pkg-config --libs libpqxx`\
-     `pkg-config --libs libpq`
 DBPATH=./db
 DBPORT=5432
 DBHOST=127.0.0.1
+DBUSER=postgres
+DBUSER=$(shell whoami)
 DBNAM=test
-$(BIN): $(SRC)
-	mkdir -p $(@D)
-	$(CC)\
-		$(CXXFLAGS)\
-		$(SRC)\
-		$(LIBS)\
-		-o $(BIN)
-.phony:		\
-	run	\
-	dbrm	\
-	dbmk	\
-	dbinit	\
-	dbstart	\
-	dbstop	\
-	dbpsql	\
-	dbsize	\
-	dbls	\
-	dbdrop	\
-	clean 
-run: $(BIN)
-	$(BIN)
+PG_BINDIR=/usr/lib/postgresql/12/bin/
+INITDB=$(PG_BINDIR)initdb
+PG_CTL=$(PG_BINDIR)pg_ctl
+PSQL=/usr/bin/psql
+RM=/usr/bin/rm
+#-U sa 
 dbmk:
-	initdb \
+	$(INITDB) \
 		$(DBPATH)
 dbrm:
-	rm \
+	$(RM) \
 		-r $(DBPATH)
 dbstart:
-	pg_ctl \
+#	sudo -u postgres 
+	$(PG_CTL) \
+		-U $(DBUSER) \
 		-D $(DBPATH) \
 		-o "-p $(DBPORT)" \
 		start
 dbstop:
-	pg_ctl \
+	$(PG_CTL) \
+		-U $(DBUSER) \
 		-D $(DBPATH) \
 		-o "-p $(DBPORT)" \
 		stop 
-dbpsql:
-	psql \
+dbclient:
+	$(PSQL) \
+		-U $(DBUSER) \
 		-h $(DBHOST) \
 		-p $(DBPORT) \
 		$(DBNAM)
 dbvacuum:
-	psql \
+	$(PSQL) \
+		-U $(DBUSER) \
 		-P pager=off\
 		-h $(DBHOST) \
 		-p $(DBPORT) \
 		-d $(DBNAM)\
 		-c "vacuum full;"
 dbsize:
-	psql \
+	$(PSQL) \
+		-U $(DBUSER) \
 		-P pager=off\
 		-h $(DBHOST)\
 		-p $(DBPORT)\
 		-d $(DBNAM)\
 		-c "select pg_database_size('$(DBNAM)'),pg_size_pretty( pg_database_size('$(DBNAM)'));"
 dbls:
-	psql \
+	$(PSQL) \
+		-U $(DBUSER) \
 		-P pager=off\
 		-h $(DBHOST) \
 		-p $(DBPORT) \
@@ -76,18 +61,26 @@ dbls:
 		-c "SELECT * FROM pg_catalog.pg_tables;"
 
 dbdrop:
-	psql \
+	$(PSQL) \
+		-U $(DBUSER) \
 		-P pager=off\
 		-h $(DBHOST) \
 		-p $(DBPORT) \
 		-d postgres \
 		-c "drop database $(DBNAM);"
 dbinit:
-	psql \
+#	sudo -u postgres 
+#	$(PG_CTL) \
+#		-U $(DBUSER) \
+#		-D $(DBPATH) \
+#		-o "-p $(DBPORT)" \
+#		start
+	$(PSQL) \
+		-U $(DBUSER) \
 		-P pager=off\
 		-h $(DBHOST) \
 		-p $(DBPORT) \
 		-d postgres\
 		-c "create database $(DBNAM);"
 clean:
-	rm -r ./db ./bin
+	$(RM) -r ./db ./bin
